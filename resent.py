@@ -41,13 +41,14 @@ class BasicBlock(nn.Module):
 
 
 class ResNet(nn.Module):
-    def __init__(self, block, num_blocks, num_classes, nf, task_num=1, include_head=True):
+    def __init__(self, block, num_blocks, num_classes, nf, task_num=1, include_head=True, final_feat_sz=2):
         super(ResNet, self).__init__()
         self.in_planes = nf
         self.include_head = include_head    
 
         # self.im_sz = im_sz  
         self.emb_dim = nf * 8 * block.expansion * 4 
+        self.final_feat_sz = final_feat_sz 
     
         self.conv1 = conv3x3(3, nf * 1)
         self.bn1 = nn.BatchNorm2d(nf * 1)
@@ -80,7 +81,7 @@ class ResNet(nn.Module):
         out = self.layer2(out)
         out = self.layer3(out)
         out = self.layer4(out)
-        out = adaptive_avg_pool2d(out, (2, 2))
+        out = adaptive_avg_pool2d(out, (self.final_feat_sz, self.final_feat_sz))
         out = out.reshape(out.size(0), -1)
 
         if self.include_head:    
@@ -95,5 +96,6 @@ class ResNet(nn.Module):
     
 
 
-def ResNet18(task_num, nclasses, nf=32, include_head=True):
-    return ResNet(BasicBlock, [2, 2, 2, 2], nclasses, nf, task_num=task_num, include_head=include_head)
+def ResNet18(task_num, nclasses, nf=32, final_feat_sz=2, include_head=True):
+    return ResNet(BasicBlock, [2, 2, 2, 2], nclasses, nf, task_num=task_num, include_head=include_head,
+                  final_feat_sz=final_feat_sz)

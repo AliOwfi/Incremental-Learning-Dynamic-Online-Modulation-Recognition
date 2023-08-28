@@ -1,9 +1,9 @@
 from models import * 
+from utils import *
 import pickle as pkl    
 from torch.utils.data import DataLoader 
 from data_utils import CustomTenDataset
 import warnings
-from utils import * 
 
 
 warnings.filterwarnings("ignore")
@@ -214,7 +214,8 @@ class iCaRLNet(nn.Module):
 
 def create_and_load_old_icarl(model, **kwargs):
     feat_ext_old = create_model_class_inc(task_num=1, class_num=None, 
-                                          model_type=kwargs['model_type'], emb_fact=kwargs['emb_fact'], include_head=False)
+                                          model_type=kwargs['model_type'], emb_fact=kwargs['emb_fact'], include_head=False, 
+                                          nf=kwargs['nf'], final_feat_sz=kwargs['final_feat_sz'])
     
     model_old = iCaRLNet(feat_ext_old, kwargs['emb_dim'], model.n_classes)
     model_old.register_variables_first_time(model.state_dict())
@@ -284,7 +285,9 @@ def train_icarl(scenario_name, task_num, n_epochs, seed=0, dataset='pmnist', mod
     torch.manual_seed(seed)
 
     ds_dict, task_order, im_sz, class_num, emb_fact = get_dataset_specs_class_inc(task_num=task_num, task_order=None, dataset=dataset, seed=seed)
-    feat_ext = create_model_class_inc(task_num=1, class_num=None, model_type=model_type, emb_fact=emb_fact, include_head=False)
+    feat_ext = create_model_class_inc(task_num=1, nf=64, final_feat_sz=1, 
+                                      class_num=None, model_type=model_type, emb_fact=emb_fact, include_head=False)
+    
     feat_ext = feat_ext.to(device)
     model = iCaRLNet(feat_ext, emb_dim, class_num)
     model = model.to(device)      
@@ -323,13 +326,15 @@ def train_icarl(scenario_name, task_num, n_epochs, seed=0, dataset='pmnist', mod
         dl_train = DataLoader(comb_train_ds, batch_size=bs, shuffle=True)    
         
         if task_ind > 0:    
-            old_model = create_and_load_old_icarl(model, model_type=model_type, emb_fact=emb_fact, emb_dim=emb_dim)    
+            old_model = create_and_load_old_icarl(model, model_type=model_type, emb_fact=emb_fact, 
+                                                  emb_dim=emb_dim, nf=64, final_feat_sz=1)    
+            
             old_model.increment_classes(len(task_order[task_ind]))  
             old_model.to(device)    
             model.increment_classes(len(task_order[task_ind]))  
 
         model = model.to(device)    
-        optim = create_optimizer(model, optim_name, lr, weight_decay=0.00001) 
+        optim = create_optimizer(model, optim_name, lr, weight_decay=0.) 
         loss_ = []
 
         for epoch in range(n_epochs):
@@ -401,5 +406,5 @@ def train_icarl(scenario_name, task_num, n_epochs, seed=0, dataset='pmnist', mod
 
 
 train_icarl('icarl_clean', task_num=10, n_epochs=100, seed=0, dataset='split_cifar100', model_type='resnet', 
-            lr=1., optim_name='sgd', bs=128, emb_dim=1024, exemp_num=2000)
+            lr=1., optim_name='sgd', bs=128, emb_dim=512, exemp_num=2000)
 

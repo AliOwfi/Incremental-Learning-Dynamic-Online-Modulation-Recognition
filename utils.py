@@ -1,4 +1,3 @@
-
 import torch 
 from models import *    
 from data_utils import *
@@ -50,7 +49,8 @@ def generate_save_name(save_dict):
 def create_model_class_inc(**kwargs):
     
     if kwargs['model_type'] == 'resnet':    
-        model = ResNet18(task_num=kwargs['task_num'], nclasses=kwargs['class_num'], include_head=kwargs['include_head']).to(device)
+        model = ResNet18(task_num=kwargs['task_num'], nclasses=kwargs['class_num'], include_head=kwargs['include_head'],
+                         nf=kwargs['nf'], final_feat_sz=kwargs['final_feat_sz']).to(device)
     
 
     return model
