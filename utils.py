@@ -1,9 +1,9 @@
-import torch 
-from models import *    
-from data_utils import *
-import matplotlib.pyplot as plt
-import numpy as np  
-from resnet import *    
+import torch
+import numpy as np
+import random
+from resent import *
+
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")   
@@ -63,3 +63,8 @@ def create_optimizer(model, optim_name, lr=1e-3, weight_decay=0):
         optim = torch.optim.Adam(model.parameters(), lr=lr)   
 
     return optim    
+
+def set_seed(seed):
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    random.seed(seed)
