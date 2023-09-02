@@ -2,6 +2,7 @@ import torch
 import numpy as np
 import random
 from resent import *
+from models import *
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -20,7 +21,7 @@ def eval_dl(model, dl, verbose=True, task_id=-1, class_inc=False):
             y_hat = model(x)[task_id]
             y_hat = torch.argmax(y_hat, dim=1)
         else:
-            y_hat = model.classify(x, mode=1)
+            y_hat = model.classify(x, mode=0)
 
         n_correct += torch.sum(y_hat == y).item()
         n_total += y.shape[0]
@@ -51,6 +52,9 @@ def create_model_class_inc(**kwargs):
     if kwargs['model_type'] == 'resnet':    
         model = ResNet18(task_num=kwargs['task_num'], nclasses=kwargs['class_num'], include_head=kwargs['include_head'],
                          nf=kwargs['nf'], final_feat_sz=kwargs['final_feat_sz']).to(device)
+        
+    elif kwargs['model_type'] == 'cnn1d':
+        model = CNN1DClassifier(n_way=kwargs['class_num'], indclude_head=False).to(device)   
     
 
     return model
@@ -58,7 +62,7 @@ def create_model_class_inc(**kwargs):
 
 def create_optimizer(model, optim_name, lr=1e-3, weight_decay=0):
     if optim_name == 'sgd':
-        optim = torch.optim.SGD(model.parameters(), lr=lr, weight_decay=weight_decay)
+        optim = torch.optim.SGD(model.parameters(), lr=lr, weight_decay=weight_decay, momentum=0.9)
     elif optim_name == 'adam':
         optim = torch.optim.Adam(model.parameters(), lr=lr)   
 

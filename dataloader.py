@@ -73,10 +73,16 @@ def ds_random_split(ds, ratio=.1):
     test_num = int(len(data_x) * ratio)
     prms = torch.randperm(len(data_x))
 
-    test_x, test_y = torch.stack(data_x[:test_num]), torch.stack(data_y[:test_num])
-    trian_x, train_y = torch.stack(data_x[test_num:]), torch.stack(data_y[test_num:])
+    # test_x, test_y = torch.stack(data_x[:test_num]), torch.stack(data_y[:test_num])
+    # trian_x, train_y = torch.stack(data_x[test_num:]), torch.stack(data_y[test_num:])
 
-    new_ds_train = CustomTenDataset(trian_x, train_y)
+    train_x = torch.stack([data_x[i] for i in prms[test_num:]])
+    train_y = torch.stack([data_y[i] for i in prms[test_num:]])
+    
+    test_x = torch.stack([data_x[i] for i in prms[:test_num]])
+    test_y = torch.stack([data_y[i] for i in prms[:test_num]])
+
+    new_ds_train = CustomTenDataset(train_x, train_y)
     new_ds_test = CustomTenDataset(test_x, test_y)
 
     return new_ds_train, new_ds_test

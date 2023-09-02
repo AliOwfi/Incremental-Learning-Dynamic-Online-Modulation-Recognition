@@ -2,7 +2,7 @@ from models import *
 from utils import *
 import pickle as pkl    
 from torch.utils.data import DataLoader 
-from data_utils import CustomTenDataset
+from data_utils import CustomTenDataset, get_dataset_specs_class_inc
 import warnings
 
 
@@ -37,7 +37,6 @@ class iCaRLNet(nn.Module):
 
     def forward(self, x):
         x = self.feature_extractor(x)
-
         x = self.fc(x)
         return x
 
@@ -288,6 +287,8 @@ def train_icarl(scenario_name, task_num, n_epochs, seed=0, dataset='pmnist', mod
     feat_ext = create_model_class_inc(task_num=1, nf=64, final_feat_sz=1, 
                                       class_num=None, model_type=model_type, emb_fact=emb_fact, include_head=False)
     
+
+
     feat_ext = feat_ext.to(device)
     model = iCaRLNet(feat_ext, emb_dim, class_num)
     model = model.to(device)      
@@ -334,12 +335,12 @@ def train_icarl(scenario_name, task_num, n_epochs, seed=0, dataset='pmnist', mod
             model.increment_classes(len(task_order[task_ind]))  
 
         model = model.to(device)    
-        optim = create_optimizer(model, optim_name, lr, weight_decay=0.) 
+        optim = create_optimizer(model, optim_name, lr, weight_decay=1e-5) 
         loss_ = []
 
         for epoch in range(n_epochs):
             model.train()
-            optim = icarl_lr_sch(epoch, lr, optim)
+            # optim = icarl_lr_sch(epoch, lr, optim)
             for i, (x, y) in enumerate(dl_train):
                 x, y = x.to(device), y.type(torch.int64).to(device)           
     
@@ -355,7 +356,7 @@ def train_icarl(scenario_name, task_num, n_epochs, seed=0, dataset='pmnist', mod
 
                 optim.zero_grad()
                 loss.backward()
-                # torch.nn.utils.clip_grad_norm_(model.parameters(), 10)   
+                torch.nn.utils.clip_grad_norm_(model.parameters(), 10)   
                 optim.step()
 
                 loss_.append(loss.item())
@@ -405,6 +406,6 @@ def train_icarl(scenario_name, task_num, n_epochs, seed=0, dataset='pmnist', mod
     pkl.dump(save_dict, open(f'{save_name}.pkl', 'wb'))
 
 
-train_icarl('icarl_clean', task_num=10, n_epochs=100, seed=0, dataset='split_cifar100', model_type='resnet', 
-            lr=1., optim_name='sgd', bs=128, emb_dim=512, exemp_num=2000)
+train_icarl('icarl_clean', task_num=5, n_epochs=20, seed=0, dataset='split_modulation', model_type='cnn1d', 
+            lr=0.01, optim_name='sgd', bs=16, emb_dim=128, exemp_num=2000)
 

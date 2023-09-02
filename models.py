@@ -2,9 +2,10 @@ import torch.nn as nn
 
 
 class CNN1DClassifier(nn.Module):
-    def __init__(self, n_way):
+    def __init__(self, n_way, indclude_head=True):
         super().__init__()
         self.loss = nn.CrossEntropyLoss()
+        self.include_head = indclude_head   
 
         self.model = nn.Sequential(
             nn.Conv1d(in_channels=2, out_channels=64, kernel_size=3, stride=1, padding=1),
@@ -26,10 +27,19 @@ class CNN1DClassifier(nn.Module):
             nn.Flatten(),
             nn.Linear(in_features=6144, out_features=128, bias=True),
             nn.ReLU(),
-            nn.Linear(in_features=128, out_features=n_way, bias=True),
+            
         )
 
+        if indclude_head:
+            self.head = nn.Linear(in_features=128, out_features=n_way, bias=True)
+            
+
     def forward(self, x, params=None):
-        return self.model(x)
+        x = self.model(x)
+
+        if self.include_head:
+            x = self.head(x)
+
+        return x
 
 

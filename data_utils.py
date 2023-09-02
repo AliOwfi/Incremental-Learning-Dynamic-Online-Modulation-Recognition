@@ -4,6 +4,7 @@ import torch
 from torch.utils.data import TensorDataset
 from torch.utils.data import Dataset    
 from torchvision.datasets import CIFAR100
+import os 
 
 
 
@@ -122,6 +123,79 @@ def generate_split_cifar100_tasks_class_inc(task_num, seed=0, rnd_order=True, or
     return ds_dict, tasks_cls
 
 
+def generate_modulation_ds_class_inc(task_num, seed=0, rnd_order=True, order=None ):
+    np.random.seed(seed)    
+    torch.manual_seed(seed) 
+
+    home_dir = os.path.expanduser('~')
+    file_name = os.path.join(home_dir, 'data', 'cl_modulation', 'data_0.npz')
+    all_data = np.load(file_name)
+
+    x_train, y_train, x_test, y_test = all_data['train_x'], all_data['train_y'], all_data['test_x'], all_data['test_y'] 
+    ds_train = CustomTenDataset(x_train, y_train)
+    ds_tst = CustomTenDataset(x_test, y_test)   
+
+    total_class_num = np.unique(y_train).shape[0]
+    
+    print(x_train.shape, y_train.shape, x_test.shape, y_test.shape  )
+
+    # print('Total class num: {}'.format(total_class_num))
+    
+
+    if rnd_order:
+        rnd_cls_order = np.random.permutation(total_class_num)
+    else:
+        rnd_cls_order = order
+        
+    tasks_cls = []
+
+    cls_per_task = total_class_num // task_num  
+    for i in range(task_num):
+        tasks_cls.append(rnd_cls_order[i*cls_per_task:(i+1)*cls_per_task])
+    
+    
+    ds_train.targets = torch.tensor(ds_train.targets)   
+    ds_tst.targets = torch.tensor(ds_tst.targets)   
+
+    ds_dict = {}
+    ds_dict['train'] = []
+    ds_dict['test'] = []
+    
+    for i in range(task_num):
+        train_task_idx_ = []
+        tst_task_idx_ = []
+        train_task_idx = torch.zeros(len(ds_train.targets)).bool()  
+        tst_task_idx = torch.zeros(len(ds_tst.targets)).bool()
+        for j in range(cls_per_task):
+            train_task_idx_.append(ds_train.targets == tasks_cls[i][j])  
+            tst_task_idx_.append(ds_tst.targets == tasks_cls[i][j])  
+    
+            train_task_idx = torch.logical_or(train_task_idx, train_task_idx_[-1])  
+            tst_task_idx = torch.logical_or(tst_task_idx, tst_task_idx_[-1])
+
+        x_train_task = ds_train.data[train_task_idx] 
+        y_train_task = ds_train.targets[train_task_idx]
+
+        x_tst_task = ds_tst.data[tst_task_idx] 
+        y_tst_task = ds_tst.targets[tst_task_idx]
+    
+        y_train_task = torch.tensor(y_train_task)   
+        y_tst_task = torch.tensor(y_tst_task)
+        
+        x_train_task = torch.tensor(x_train_task).float()
+        x_tst_task = torch.tensor(x_tst_task).float()   
+
+        ds_dict['train'].append(CustomTenDataset(x_train_task, y_train_task))  
+        ds_dict['test'].append(CustomTenDataset(x_tst_task, y_tst_task))
+
+
+        # print('Task {} has {} classes'.format(i, np.unique(y_train_task))) 
+
+
+    return ds_dict, tasks_cls
+
+
+
 def get_dataset_specs_class_inc(**kwargs):
     emb_fact = 1  
     
@@ -132,9 +206,20 @@ def get_dataset_specs_class_inc(**kwargs):
 
         im_sz=32
         class_num = 10
+    elif kwargs['dataset'] == 'split_modulation':
+        order = np.arange(10) #change this for the complete dataset 
+        # order = np.array([1, 0, 2, 3, 4, 5, 6, 7, 8, 9])
+        ds_dict, task_order = generate_modulation_ds_class_inc(task_num=kwargs['task_num'],
+                                                               seed=kwargs['seed'], order=order, rnd_order=False )
+        im_sz=None
+        class_num = 10 // kwargs['task_num'] 
+
+                                                            
 
 
     return ds_dict, task_order, im_sz, class_num, emb_fact
+
+
 
 
 # get_cil_mnist(None) 
