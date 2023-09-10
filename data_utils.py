@@ -206,13 +206,19 @@ def get_dataset_specs_class_inc(**kwargs):
 
         im_sz=32
         class_num = 10
+        
     elif kwargs['dataset'] == 'split_modulation':
-        order = np.arange(10) #change this for the complete dataset 
-        # order = np.array([1, 0, 2, 3, 4, 5, 6, 7, 8, 9])
+        if kwargs['order'] is None:
+            order = np.arange(10) #change this for the complete dataset 
+        else:
+            order = kwargs['order'] 
+
+
+        total_class_num = np.unique(order).shape[0] 
         ds_dict, task_order = generate_modulation_ds_class_inc(task_num=kwargs['task_num'],
                                                                seed=kwargs['seed'], order=order, rnd_order=False )
         im_sz=None
-        class_num = 10 // kwargs['task_num'] 
+        class_num = total_class_num // kwargs['task_num'] 
 
                                                             
 

@@ -283,7 +283,7 @@ def train_icarl(scenario_name, task_num, n_epochs, seed=0, dataset='pmnist', mod
     np.random.seed(seed)
     torch.manual_seed(seed)
 
-    ds_dict, task_order, im_sz, class_num, emb_fact = get_dataset_specs_class_inc(task_num=task_num, task_order=None, dataset=dataset, seed=seed)
+    ds_dict, task_order, im_sz, class_num, emb_fact = get_dataset_specs_class_inc(task_num=task_num, order=None, dataset=dataset, seed=seed)
     feat_ext = create_model_class_inc(task_num=1, nf=64, final_feat_sz=1, 
                                       class_num=None, model_type=model_type, emb_fact=emb_fact, include_head=False)
     
