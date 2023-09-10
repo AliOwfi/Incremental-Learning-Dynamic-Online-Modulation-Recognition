@@ -160,7 +160,7 @@ def generate_modulation_ds_class_inc(task_num, seed=0, rnd_order=True, order=Non
     ds_dict = {}
     ds_dict['train'] = []
     ds_dict['test'] = []
-    
+    cls_so_far = 0
     for i in range(task_num):
         train_task_idx_ = []
         tst_task_idx_ = []
@@ -176,8 +176,14 @@ def generate_modulation_ds_class_inc(task_num, seed=0, rnd_order=True, order=Non
         x_train_task = ds_train.data[train_task_idx] 
         y_train_task = ds_train.targets[train_task_idx]
 
+
         x_tst_task = ds_tst.data[tst_task_idx] 
         y_tst_task = ds_tst.targets[tst_task_idx]
+
+        for j in range(cls_per_task):
+            y_train_task[y_train_task == tasks_cls[i][j]] = cls_so_far + j  
+            y_tst_task[y_tst_task == tasks_cls[i][j]] = cls_so_far + j  
+            
     
         y_train_task = torch.tensor(y_train_task)   
         y_tst_task = torch.tensor(y_tst_task)
@@ -187,6 +193,8 @@ def generate_modulation_ds_class_inc(task_num, seed=0, rnd_order=True, order=Non
 
         ds_dict['train'].append(CustomTenDataset(x_train_task, y_train_task))  
         ds_dict['test'].append(CustomTenDataset(x_tst_task, y_tst_task))
+
+        cls_so_far += cls_per_task  
 
 
         # print('Task {} has {} classes'.format(i, np.unique(y_train_task))) 
@@ -206,7 +214,7 @@ def get_dataset_specs_class_inc(**kwargs):
 
         im_sz=32
         class_num = 10
-        
+
     elif kwargs['dataset'] == 'split_modulation':
         if kwargs['order'] is None:
             order = np.arange(10) #change this for the complete dataset 

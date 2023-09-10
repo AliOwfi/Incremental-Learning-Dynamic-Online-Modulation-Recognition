@@ -282,8 +282,8 @@ def train_icarl(scenario_name, task_num, n_epochs, seed=0, dataset='pmnist', mod
     
     np.random.seed(seed)
     torch.manual_seed(seed)
-
-    ds_dict, task_order, im_sz, class_num, emb_fact = get_dataset_specs_class_inc(task_num=task_num, order=None, dataset=dataset, seed=seed)
+    order = np.random.permutation(10)
+    ds_dict, task_order, im_sz, class_num, emb_fact = get_dataset_specs_class_inc(task_num=task_num, order=order, dataset=dataset, seed=seed)
     feat_ext = create_model_class_inc(task_num=1, nf=64, final_feat_sz=1, 
                                       class_num=None, model_type=model_type, emb_fact=emb_fact, include_head=False)
     
@@ -406,6 +406,6 @@ def train_icarl(scenario_name, task_num, n_epochs, seed=0, dataset='pmnist', mod
     pkl.dump(save_dict, open(f'{save_name}.pkl', 'wb'))
 
 
-train_icarl('icarl_clean', task_num=5, n_epochs=20, seed=0, dataset='split_modulation', model_type='cnn1d', 
+train_icarl('icarl_clean', task_num=5, n_epochs=1, seed=0, dataset='split_modulation', model_type='cnn1d', 
             lr=0.01, optim_name='sgd', bs=16, emb_dim=128, exemp_num=2000)
 
