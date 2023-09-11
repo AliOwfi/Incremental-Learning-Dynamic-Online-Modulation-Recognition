@@ -13,41 +13,23 @@ from copy import deepcopy
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")   
 
 
-class Trainer:
+class BICTrainer:
     def __init__(self, total_cls, ds_dict, task_num=10):
         self.seen_cls = 0
         self.task_num = task_num    
         self.dataset = ds_dict
         self.acc_lst = []   
         self.task_cls = []
-        
 
-        # self.model = PreResNet(32,total_cls).cuda()
-        # self.model = ResNet18(task_num=1, nclasses=total_cls, nf=32, include_head=True, final_feat_sz=2)
         self.model = CNN1DClassifier(total_cls, indclude_head=True)
         self.model.to("cuda")
-        print(self.model)
-        # self.model = nn.DataParallel(self.model, device_ids=[0,1])
         
-        self.bias_layers = nn.ModuleList()  
-
-
-        # self.input_transform= Compose([
-        #                         transforms.RandomHorizontalFlip(),
-        #                         transforms.RandomCrop(32,padding=4),
-        #                         ToTensor(),])
-        #                         # Normalize([0.5071,0.4866,0.4409],[0.2673,0.2564,0.2762])])
-
-
+        self.bias_layers = nn.ModuleList()
 
         total_params = sum(p.numel() for p in self.model.parameters() if p.requires_grad)
-        self.memory = {}
-        self.memory['train'] = {'x':[], 'y':[]} 
-        self.memory['val'] = {'x':[], 'y':[]}   
-        
+        self.memory = {'train': {'x': [], 'y': []}, 'val': {'x': [], 'y': []}}
+
         print("Solver total trainable parameters : ", total_params)
-
-
 
     def test(self, testdata):
         print("test data number : ",len(testdata))
@@ -69,7 +51,6 @@ class Trainer:
         print("---------------------------------------------")
         return acc
 
-
     def eval(self, criterion, evaldata):
         self.model.eval()
         losses = []
@@ -90,28 +71,20 @@ class Trainer:
         self.model.train()
         return
 
-
     def get_lr(self, optimizer):
         for param_group in optimizer.param_groups:
             return param_group['lr']
-        
-
 
     def reduce_exemplar_nums(self, m, key):
         for cls_id in range(len(self.memory[key]['x'])):
             self.memory[key]['x'][cls_id] = self.memory[key]['x'][cls_id][:m]
             self.memory[key]['y'][cls_id] = self.memory[key]['y'][cls_id][:m]
-            
-        
 
-    def store_in_mem(self, max_sz, cur_cls_num, train_ds, eval_ds, eval_ratio=.1):
+    def store_in_mem(self, max_sz, cur_cls_num, train_ds, eval_ds, eval_ratio=.1): #TODO: ERROR random order
         sample_per_cls = max_sz // cur_cls_num  
 
         x_train, y_train = train_ds.data, train_ds.targets  
         x_eval, y_eval = eval_ds.data, eval_ds.targets  
-
-        # print(x_train.shape)
-        # print(x_eval.shape)
 
         val_store_num = int(sample_per_cls * eval_ratio)    
         train_store_num = sample_per_cls - val_store_num
@@ -120,7 +93,6 @@ class Trainer:
         self.reduce_exemplar_nums(val_store_num, 'val')
 
         cls_prev = len(self.memory['train']['x'])
-        # print("cls_prev", cls_prev)
 
         for cls_id in range(cls_prev, cur_cls_num):
             train_x_cls, train_y_cls = x_train[y_train == cls_id], y_train[y_train == cls_id]   
@@ -131,25 +103,17 @@ class Trainer:
             self.memory['val']['x'].append(val_x_cls[:val_store_num])
             self.memory['val']['y'].append(val_y_cls[:val_store_num])
 
-        # print("chekout")
-        # print(self.memory['train'])
-        # print("cls num",cur_cls_num)
-        # print(len(self.memory['train']['x']))
         assert len(self.memory['train']['x']) == cur_cls_num
         assert len(self.memory['val']['x']) == cur_cls_num
-
-            
 
     def combine_dataset_with_exemplars(self, dataset, key):
         if len(self.memory['train']['x']) == 0:
             return dataset
-        
 
         x_ten, y_ten = [], []   
         for cls_id in range(len(self.memory[key]['x'])):
             x_ten.append(self.memory[key]['x'][cls_id])
             y_ten.append(self.memory[key]['y'][cls_id]) 
-            
 
         x_ten = torch.cat(x_ten, dim=0)
         y_ten = torch.cat(y_ten, dim=0)
@@ -162,7 +126,7 @@ class Trainer:
         return new_ds   
     
     def get_memory_ds(self, key):
-        x_ten, y_ten = [], []   
+        x_ten, y_ten = [], []
         for cls_id in range(len(self.memory[key]['x'])):
             x_ten.append(self.memory[key]['x'][cls_id])
             y_ten.append(self.memory[key]['y'][cls_id]) 
@@ -179,7 +143,6 @@ class Trainer:
     def train(self, batch_size, epoches, lr, max_size):
         
         criterion = nn.CrossEntropyLoss()
-        
 
         previous_model = None
 
@@ -196,48 +159,31 @@ class Trainer:
             self.task_cls.append((self.seen_cls, self.seen_cls + curr_task_cls_num))    
             self.seen_cls += curr_task_cls_num  
             self.bias_layers.append(BiasLayer().to(device))
-            
 
             train_ds, val_ds, _ = dataset['train'][inc_i], dataset['val'][inc_i], dataset['test'][inc_i]
             train_ds = self.combine_dataset_with_exemplars(train_ds, 'train')
 
-            
             train_data = DataLoader(train_ds, batch_size=batch_size, shuffle=True, drop_last=True)
-            
-
             acc_test_ds = cosntruct_accumulative_ds(dataset['test'], inc_i) 
             test_data = DataLoader(acc_test_ds, batch_size=batch_size, shuffle=False)
 
             self.store_in_mem(max_size, self.seen_cls, train_ds=dataset['train'][inc_i], eval_ds=dataset['val'][inc_i], eval_ratio=.1)
-            
-            
+
             optimizer = optim.SGD(self.model.parameters(), lr=lr, momentum=0.9,  weight_decay=2e-4)
-            # scheduler = LambdaLR(optimizer, lr_lambda=adjust_cifar100)
-            # scheduler = StepLR(optimizer, step_size=70, gamma=0.1)
-
-
             bias_optimizer = optim.SGD(self.bias_layers[inc_i].parameters(), lr=lr, momentum=0.9)
-
-            
-            # bias_optimizer = optim.Adam(self.bias_layers[inc_i].parameters(), lr=0.001)
-            # bias_scheduler = StepLR(bias_optimizer, step_size=70, gamma=0.1)
-            # exemplar.update(total_cls//self.task_num, (train_x, train_y), (val_x, val_y))
-
-
             
             print("seen cls number : ", self.seen_cls)
 
-            print("test:",self.get_memory_ds('val'))
+            print("test:", self.get_memory_ds('val'))
             val_mem_ds = self.get_memory_ds('val')   
 
             print(val_mem_ds.data.shape)
-            val_bias_data = DataLoader(val_mem_ds, 
-                        batch_size=100, shuffle=True, drop_last=False)
-            print("checkpoint")
+            val_bias_data = DataLoader(val_mem_ds, batch_size=100, shuffle=True, drop_last=False)
+
             test_acc = []
 
             for epoch in range(epoches):
-                print("---"*50)
+                print("---")
                 print("Epoch", epoch)
 
                 cur_lr = self.get_lr(optimizer)
@@ -270,7 +216,6 @@ class Trainer:
             self.acc_lst.append(max(test_acc)*100)
             print(self.acc_lst)
 
-
     def bias_forward(self, input):
 
         outs = []   
@@ -282,8 +227,6 @@ class Trainer:
         outs = torch.cat(outs, dim=1)   
         
         return outs
-    
-
 
     def stage1(self, train_data, criterion, optimizer):
         print("Training ... ")
@@ -330,7 +273,6 @@ class Trainer:
             distill_losses.append(loss_soft_target.item())
             ce_losses.append(loss_hard_target.item())
         print("stage1 distill loss :", np.mean(distill_losses), "ce loss :", np.mean(ce_losses))
-
 
     def stage1(self, train_data, criterion, optimizer):
         print("Training ... ")
