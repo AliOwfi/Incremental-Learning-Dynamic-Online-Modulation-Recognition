@@ -110,6 +110,8 @@ class Trainer:
         x_train, y_train = train_ds.data, train_ds.targets  
         x_eval, y_eval = eval_ds.data, eval_ds.targets  
 
+        # print(x_train.shape)
+        # print(x_eval.shape)
 
         val_store_num = int(sample_per_cls * eval_ratio)    
         train_store_num = sample_per_cls - val_store_num
@@ -118,6 +120,7 @@ class Trainer:
         self.reduce_exemplar_nums(val_store_num, 'val')
 
         cls_prev = len(self.memory['train']['x'])
+        # print("cls_prev", cls_prev)
 
         for cls_id in range(cls_prev, cur_cls_num):
             train_x_cls, train_y_cls = x_train[y_train == cls_id], y_train[y_train == cls_id]   
@@ -128,8 +131,10 @@ class Trainer:
             self.memory['val']['x'].append(val_x_cls[:val_store_num])
             self.memory['val']['y'].append(val_y_cls[:val_store_num])
 
-        
-
+        # print("chekout")
+        # print(self.memory['train'])
+        # print("cls num",cur_cls_num)
+        # print(len(self.memory['train']['x']))
         assert len(self.memory['train']['x']) == cur_cls_num
         assert len(self.memory['val']['x']) == cur_cls_num
 
@@ -193,7 +198,7 @@ class Trainer:
             self.bias_layers.append(BiasLayer().to(device))
             
 
-            train_ds, val_ds, _ = dataset['train'][inc_i], dataset['val'][inc_i], dataset['test'][inc_i]   
+            train_ds, val_ds, _ = dataset['train'][inc_i], dataset['val'][inc_i], dataset['test'][inc_i]
             train_ds = self.combine_dataset_with_exemplars(train_ds, 'train')
 
             
@@ -222,12 +227,13 @@ class Trainer:
             
             print("seen cls number : ", self.seen_cls)
 
-
+            print("test:",self.get_memory_ds('val'))
             val_mem_ds = self.get_memory_ds('val')   
-            
+
+            print(val_mem_ds.data.shape)
             val_bias_data = DataLoader(val_mem_ds, 
                         batch_size=100, shuffle=True, drop_last=False)
-            
+            print("checkpoint")
             test_acc = []
 
             for epoch in range(epoches):

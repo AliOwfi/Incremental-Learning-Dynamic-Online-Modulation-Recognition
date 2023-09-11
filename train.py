@@ -4,6 +4,11 @@ from torch.utils.data import Dataset, DataLoader
 import torch.optim as optim
 import numpy as np
 
+from bic.trainer import Trainer
+from utils import *
+from data_utils import *
+import pickle as pkl
+
 from utils import eval_dl
 from ewc import *
 
@@ -114,3 +119,38 @@ def train_ewc(model, dict_ds, batch_size, epochs=10, lr=0.0001):
     bwt = np.mean((acc_mat[-1] - np.diag(acc_mat))[:-1])
 
     print(f'avg acc: {avg_acc}')
+
+
+
+
+# def train_bic(scenario_name, task_num, rnd_order, dataset_name, exemp_num, lr, n_epochs, seed=0):
+def train_bic(ds_dict, total_cls, task_num, exemp_num, lr, n_epochs):
+    batch_size = 128
+
+    # ds_dict, task_order, im_sz, class_num, emb_fact, total_cls = get_dataset_specs_class_inc(seed=1,
+    #                                                                                          task_num=10,
+    #                                                                                          rnd_order=False,
+    #                                                                                          dataset='split_modulation',
+    #                                                                                          eval_ratio=0.1, order=None, snrs=[20])
+
+    # save_dict = {}
+    # save_dict['scenario'] = scenario_name
+    # save_dict['model_type'] = 'resnet'
+    # save_dict['dataset'] = 'split_cifar100'
+    # save_dict['optim_name'] = 'sgd'
+    # save_dict['class_num'] = class_num
+    # save_dict['bs'] = batch_size
+    # save_dict['lr'] = 1.
+    # save_dict['n_epochs'] = n_epochs
+    # save_dict['task_num'] = task_num
+    # save_dict['task_order'] = task_order
+    # save_dict['seed'] = seed
+    # save_dict['emb_fact'] = emb_fact
+
+    trainer = Trainer(total_cls, ds_dict=ds_dict, task_num=task_num)
+
+    trainer.train(batch_size, n_epochs, lr, exemp_num)
+
+    # save_dict['model'] = trainer.model.state_dict()
+    # save_name = generate_save_name(save_dict)
+    # pkl.dump(save_dict, open(f'{save_name}.pkl', 'wb'))

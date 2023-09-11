@@ -406,6 +406,6 @@ def train_icarl(scenario_name, task_num, n_epochs, seed=0, dataset='pmnist', mod
     pkl.dump(save_dict, open(f'{save_name}.pkl', 'wb'))
 
 
-train_icarl('icarl_clean', task_num=5, n_epochs=1, seed=0, dataset='split_modulation', model_type='cnn1d', 
-            lr=0.01, optim_name='sgd', bs=16, emb_dim=128, exemp_num=2000)
-
+# train_icarl('icarl_clean', task_num=5, n_epochs=1, seed=0, dataset='split_modulation', model_type='cnn1d',
+#             lr=0.01, optim_name='sgd', bs=16, emb_dim=128, exemp_num=2000)
+#
