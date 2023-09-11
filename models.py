@@ -1,4 +1,5 @@
 import torch.nn as nn
+import torch
 
 
 class CNN1DClassifier(nn.Module):
@@ -43,3 +44,13 @@ class CNN1DClassifier(nn.Module):
         return x
 
 
+
+class BiasLayer(nn.Module):
+    def __init__(self):
+        super(BiasLayer, self).__init__()
+        self.alpha = nn.Parameter(torch.ones(1, requires_grad=True, device="cuda"))
+        self.beta = nn.Parameter(torch.zeros(1, requires_grad=True, device="cuda"))
+    def forward(self, x):
+        return self.alpha * x + self.beta
+    def printParam(self, i):
+        print(i, self.alpha.item(), self.beta.item())

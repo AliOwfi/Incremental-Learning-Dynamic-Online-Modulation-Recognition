@@ -123,7 +123,7 @@ def generate_split_cifar100_tasks_class_inc(task_num, seed=0, rnd_order=True, or
     return ds_dict, tasks_cls
 
 
-def generate_modulation_ds_class_inc(task_num, seed=0, rnd_order=True, order=None ):
+def generate_modulation_ds_class_inc(task_num, seed=0, rnd_order=True, order=None, eval_ratio=None ):
     np.random.seed(seed)    
     torch.manual_seed(seed) 
 
@@ -160,6 +160,8 @@ def generate_modulation_ds_class_inc(task_num, seed=0, rnd_order=True, order=Non
     ds_dict = {}
     ds_dict['train'] = []
     ds_dict['test'] = []
+    ds_dict['val'] = []
+    
     cls_so_far = 0
     for i in range(task_num):
         train_task_idx_ = []
@@ -191,6 +193,14 @@ def generate_modulation_ds_class_inc(task_num, seed=0, rnd_order=True, order=Non
         x_train_task = torch.tensor(x_train_task).float()
         x_tst_task = torch.tensor(x_tst_task).float()   
 
+        if eval_ratio is not None:
+            eval_num = int(len(x_train_task) * eval_ratio)
+            x_eval_task = x_train_task[:eval_num]
+            y_eval_task = y_train_task[:eval_num]
+            x_train_task = x_train_task[eval_num:]
+            y_train_task = y_train_task[eval_num:]
+            ds_dict['val'].append(CustomTenDataset(x_eval_task, y_eval_task))
+
         ds_dict['train'].append(CustomTenDataset(x_train_task, y_train_task))  
         ds_dict['test'].append(CustomTenDataset(x_tst_task, y_tst_task))
 
@@ -221,19 +231,34 @@ def get_dataset_specs_class_inc(**kwargs):
         else:
             order = kwargs['order'] 
 
-
+        eval_ratio = kwargs['eval_ratio'] if 'eval_ratio' in kwargs else None   
         total_class_num = np.unique(order).shape[0] 
         ds_dict, task_order = generate_modulation_ds_class_inc(task_num=kwargs['task_num'],
-                                                               seed=kwargs['seed'], order=order, rnd_order=False )
+                                                               seed=kwargs['seed'], order=order, 
+                                                               rnd_order=False, eval_ratio=eval_ratio )
         im_sz=None
         class_num = total_class_num // kwargs['task_num'] 
+        
 
                                                             
 
 
-    return ds_dict, task_order, im_sz, class_num, emb_fact
+    return ds_dict, task_order, im_sz, class_num, emb_fact, total_class_num
 
 
+def cosntruct_accumulative_ds(ds_lst, task_ind):
+    ds_data = []
+    ds_targets = []
+
+    for t_id in range(task_ind+1):
+        ds_data.append(ds_lst[t_id].data)   
+        ds_targets.append(ds_lst[t_id].targets) 
+
+    ds_data = torch.cat(ds_data, dim=0)
+    ds_targets = torch.cat(ds_targets, dim=0)
+    acc_ds = CustomTenDataset(ds_data, ds_targets)  
+
+    return acc_ds
 
 
 # get_cil_mnist(None) 
