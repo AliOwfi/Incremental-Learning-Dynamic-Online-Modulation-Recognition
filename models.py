@@ -3,10 +3,10 @@ import torch
 
 
 class CNN1DClassifier(nn.Module):
-    def __init__(self, n_way, indclude_head=True):
+    def __init__(self, n_way, include_head=True):
         super().__init__()
         self.loss = nn.CrossEntropyLoss()
-        self.include_head = indclude_head   
+        self.include_head = include_head
 
         self.model = nn.Sequential(
             nn.Conv1d(in_channels=2, out_channels=64, kernel_size=3, stride=1, padding=1),
@@ -31,9 +31,8 @@ class CNN1DClassifier(nn.Module):
             
         )
 
-        if indclude_head:
+        if include_head:
             self.head = nn.Linear(in_features=128, out_features=n_way, bias=True)
-            
 
     def forward(self, x, params=None):
         x = self.model(x)

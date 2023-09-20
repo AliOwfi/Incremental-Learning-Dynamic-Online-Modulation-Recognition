@@ -6,11 +6,52 @@ import numpy as np
 
 from il_algorithms.bic import BICTrainer
 from utils import *
-
+from dataloader import *
 from utils import eval_dl
 from ewc import *
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+
+def run_cl(method, task_order, snrs: list, n_epochs, bs, lr, seed, save=False):
+    set_seed(seed)
+    dict_ds = get_cil_datasets(classes_order=task_order, snrs=snrs)
+
+    total_cls = task_order.shape[0]*task_order.shape[1]
+    task_num = task_order.shape[0]
+
+    print("Dataset created")
+
+    if method == 'icarl':
+        exemp_num = 2000
+        acc_mat, accumulative_acc_lst = train_icarl(dict_ds, task_order, n_epochs=n_epochs, model_type='cnn1d',
+                                                    lr=lr, optim_name='sgd', bs=bs, emb_dim=128, exemp_num=exemp_num)
+    elif method == 'bic':
+        exemp_num = 2000
+
+        train_bic(ds_dict=dict_ds, total_cls=total_cls, task_num=task_num, exemp_num=exemp_num, lr=lr,
+                  n_epochs=n_epochs, bs=bs)
+
+    elif method == 'conventional':
+        class_num = 2
+
+        model = CNN1DClassifier(n_way=20).to(device)
+        acc_mat, accumulative_acc_lst = train_conventional(model, dict_ds, batch_size=bs, epochs=n_epochs, lr=lr)
+    else:
+        raise Exception("CL method not known")
+    if save:
+        save_data_dict = {'acc_mat': acc_mat,
+                          'accumulative_acc_lst': accumulative_acc_lst,
+                          'task_order': task_order,
+                          'snrs': snrs,
+                          'lr': lr,
+                          'bs': bs,
+                          'exemp_num': exemp_num,
+                          'method': method
+                          }
+        file_name = f'{method}_{snrs}_epoch{n_epochs}_bs{bs}_seed{seed}_{task_order}.pkl'
+        with open(f'results/{file_name}', 'wb') as fp:
+            pickle.dump(save_data_dict, fp)
 
 
 def train_conventional(model, dict_ds, batch_size, epochs=10, lr=0.0001):
@@ -119,10 +160,9 @@ def train_ewc(model, dict_ds, batch_size, epochs=10, lr=0.0001):
     print(f'avg acc: {avg_acc}')
 
 
-def train_bic(ds_dict, total_cls, task_num, exemp_num, lr, n_epochs):
-    batch_size = 128
+def train_bic(ds_dict, total_cls, task_num, exemp_num, lr, n_epochs, bs):
 
     trainer = BICTrainer(total_cls, ds_dict=ds_dict, task_num=task_num)
 
-    trainer.train(batch_size, n_epochs, lr, exemp_num)
+    trainer.train(bs, n_epochs, lr, exemp_num)
 

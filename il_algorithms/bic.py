@@ -4,7 +4,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 from torch.optim.lr_scheduler import  StepLR
-from data_utils import CustomTenDataset, cosntruct_accumulative_ds
+from data_utils import cosntruct_accumulative_ds
+from dataloader import *
 import numpy as np
 
 from models import BiasLayer, CNN1DClassifier
@@ -21,7 +22,7 @@ class BICTrainer:
         self.acc_lst = []   
         self.task_cls = []
 
-        self.model = CNN1DClassifier(total_cls, indclude_head=True)
+        self.model = CNN1DClassifier(total_cls, include_head=True)
         self.model.to("cuda")
         
         self.bias_layers = nn.ModuleList()
