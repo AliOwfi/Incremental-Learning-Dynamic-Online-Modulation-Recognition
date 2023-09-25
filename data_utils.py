@@ -113,6 +113,7 @@ def generate_split_cifar100_tasks_class_inc(task_num, seed=0, rnd_order=True, or
         x_train_task = torch.tensor(x_train_task).permute(0, 3, 1, 2).float()
         x_tst_task = torch.tensor(x_tst_task).permute(0, 3, 1, 2).float()   
 
+        
         ds_dict['train'].append(CustomTenDataset(x_train_task, y_train_task))  
         ds_dict['test'].append(CustomTenDataset(x_tst_task, y_tst_task))
 
@@ -201,6 +202,14 @@ def generate_modulation_ds_class_inc(task_num, seed=0, rnd_order=True, order=Non
             y_train_task = y_train_task[eval_num:]
             ds_dict['val'].append(CustomTenDataset(x_eval_task, y_eval_task))
 
+
+        # print(x_train_task.shape)
+        # means = x_train_task.mean(dim=0, keepdim=True)  
+        # stds = x_train_task.std(dim=0, keepdim=True)    
+        # x_train_task = (x_train_task - means) / stds    
+        # x_tst_task = (x_tst_task - means) / stds    
+        
+        
         ds_dict['train'].append(CustomTenDataset(x_train_task, y_train_task))  
         ds_dict['test'].append(CustomTenDataset(x_tst_task, y_tst_task))
 
@@ -260,5 +269,19 @@ def cosntruct_accumulative_ds(ds_lst, task_ind):
 
     return acc_ds
 
+
+def combine_acc_datasets(ds_lst, task_ind):
+    ds_data = []
+    ds_targets = []
+
+    for t_id in range(task_ind+1):
+        ds_data.append(ds_lst[t_id].data)   
+        ds_targets.append(ds_lst[t_id].targets) 
+
+    ds_data = torch.cat(ds_data, dim=0)
+    ds_targets = torch.cat(ds_targets, dim=0)
+    acc_ds = CustomTenDataset(ds_data, ds_targets)  
+
+    return acc_ds
 
 # get_cil_mnist(None) 

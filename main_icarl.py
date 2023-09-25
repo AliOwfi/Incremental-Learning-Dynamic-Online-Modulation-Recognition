@@ -350,7 +350,7 @@ def train_icarl(scenario_name, task_num, n_epochs, seed=0, dataset='pmnist', mod
                 if task_ind > 0:
                     y_hat_old = torch.sigmoid(old_model(x)).detach()    
                     y_one_hot[:, :model.n_known] = y_hat_old[:, :model.n_known]
-                
+                                    
                 
                 loss = torch.nn.functional.binary_cross_entropy_with_logits(y_hat, y_one_hot)   
 
