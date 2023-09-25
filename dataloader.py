@@ -17,7 +17,7 @@ class SignalDataset(Dataset):
          'snr': -20}
     """
 
-    def __init__(self, snrs: list, modulation_ids: list, file_path):
+    def __init__(self, snrs: list, modulation_ids: list, file_path, class_mapping: list):
         self.modulation_ids = modulation_ids
         self.snrs = snrs
 
@@ -33,11 +33,12 @@ class SignalDataset(Dataset):
                                           modulation_id * 106496 + (int((snr + 20) / 2) + 1) * 4096):
                     if np.argmax(f['Y'][signal_index]) == modulation_id and f['Z'][signal_index] == snr:
                         self.list_signals.append({'sig': torch.tensor(f['X'][signal_index].T),
-                                                  'modulation': torch.tensor(np.argmax(f['Y'][signal_index])),
+                                                  # 'modulation': torch.tensor(np.argmax(f['Y'][signal_index])),
+                                                  'modulation': torch.tensor(class_mapping[np.argmax(f['Y'][signal_index])]),
                                                   'snr': f['Z'][signal_index][0]})
 
                         self.data.append(torch.tensor(f['X'][signal_index].T))
-                        self.targets.append(torch.tensor(np.argmax(f['Y'][signal_index])))
+                        self.targets.append(torch.tensor(class_mapping[np.argmax(f['Y'][signal_index])]))
 
     def __len__(self):
         return len(self.list_signals)
@@ -68,45 +69,57 @@ class CustomTenDataset(Dataset):
         return data, target
 
 
-def ds_random_split(ds, ratio=.1):
+def ds_random_split(ds, test_ratio=.1, val_ratio=.01):
     data_x, data_y = ds.data, ds.targets
-    test_num = int(len(data_x) * ratio)
+    test_num = int(len(data_x) * test_ratio)
+    val_num = int(len(data_x) * val_ratio)
     prms = torch.randperm(len(data_x))
 
-    # test_x, test_y = torch.stack(data_x[:test_num]), torch.stack(data_y[:test_num])
-    # trian_x, train_y = torch.stack(data_x[test_num:]), torch.stack(data_y[test_num:])
-
-    train_x = torch.stack([data_x[i] for i in prms[test_num:]])
-    train_y = torch.stack([data_y[i] for i in prms[test_num:]])
+    train_x = torch.stack([data_x[i] for i in prms[test_num+val_num:]])
+    train_y = torch.stack([data_y[i] for i in prms[test_num+val_num:]])
     
     test_x = torch.stack([data_x[i] for i in prms[:test_num]])
     test_y = torch.stack([data_y[i] for i in prms[:test_num]])
 
+    val_x = torch.stack([data_x[i] for i in prms[test_num:test_num+val_num]])
+    val_y = torch.stack([data_y[i] for i in prms[test_num:test_num+val_num]])
+
     new_ds_train = CustomTenDataset(train_x, train_y)
     new_ds_test = CustomTenDataset(test_x, test_y)
+    new_ds_val = CustomTenDataset(val_x, val_y)
 
-    return new_ds_train, new_ds_test
+    return new_ds_train, new_ds_test, new_ds_val
 
+def create_modulation_id_mapping(task_order: np.array):
+    counter = 0
+    mapping_list = [0] * 24
+    for task in task_order:
+        for modualtion_id in task:
+            mapping_list[modualtion_id] = counter
+            counter += 1
+    return mapping_list
 
 def get_cil_datasets(classes_order=np.arange(4).reshape(2, 2), snrs=[20], save_data=False):
     file_path = "dataset/GOLD_XYZ_OSC.0001_1024.hdf5"
-
-    ds_dict = {'train': [], 'test': []}
+    class_mapping = create_modulation_id_mapping(classes_order)
+    ds_dict = {'train': [], 'test': [], 'val': []}
 
     for classes_id in classes_order:
         dataset = SignalDataset(snrs=snrs, modulation_ids=classes_id,
-                                file_path=file_path)
+                                file_path=file_path, class_mapping=class_mapping)
 
-        train_dataset, test_dataset = ds_random_split(dataset)
+        train_dataset, test_dataset, val_dataset = ds_random_split(dataset)
 
         ds_dict['train'].append(train_dataset)
         ds_dict['test'].append(test_dataset)
+        ds_dict['val'].append(val_dataset)
 
-    for i in range(len(ds_dict['train'])):
-        np.savez(f"data_{i}.npz", train_x=ds_dict['train'][i].data, train_y=ds_dict['train'][i].data
-                 , test_x=ds_dict['test'][i].data, test_y=ds_dict['test'][i].data)
+    if save_data:
+        for i in range(len(ds_dict['train'])):
+            np.savez(f"data_{i}.npz", train_x=ds_dict['train'][i].data, train_y=ds_dict['train'][i].data
+                     , test_x=ds_dict['test'][i].data, test_y=ds_dict['test'][i].data)
 
-    return ds_dict
+    return ds_dict, class_mapping
 
 
 if __name__ == "__main__":

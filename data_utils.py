@@ -4,7 +4,8 @@ import torch
 from torch.utils.data import TensorDataset
 from torch.utils.data import Dataset    
 from torchvision.datasets import CIFAR100
-import os 
+import os
+from dataloader import *
 
 
 
@@ -124,12 +125,15 @@ def generate_split_cifar100_tasks_class_inc(task_num, seed=0, rnd_order=True, or
     return ds_dict, tasks_cls
 
 
-def generate_modulation_ds_class_inc(task_num, seed=0, rnd_order=True, order=None, eval_ratio=None ):
+def generate_modulation_ds_class_inc(task_num, snrs, seed=0, rnd_order=True, order=None, eval_ratio=None ):
     np.random.seed(seed)    
-    torch.manual_seed(seed) 
+    torch.manual_seed(seed)
 
-    home_dir = os.path.expanduser('~')
-    file_name = os.path.join(home_dir, 'data', 'cl_modulation', 'data_0.npz')
+    print(order)
+    # get_cil_datasets(snrs=snrs, classes_order=order)
+
+    # home_dir = os.path.expanduser('~')
+    file_name = os.path.join('data_0.npz')
     all_data = np.load(file_name)
 
     x_train, y_train, x_test, y_test = all_data['train_x'], all_data['train_y'], all_data['test_x'], all_data['test_y'] 
@@ -141,7 +145,6 @@ def generate_modulation_ds_class_inc(task_num, seed=0, rnd_order=True, order=Non
     print(x_train.shape, y_train.shape, x_test.shape, y_test.shape  )
 
     # print('Total class num: {}'.format(total_class_num))
-    
 
     if rnd_order:
         rnd_cls_order = np.random.permutation(total_class_num)
@@ -242,7 +245,7 @@ def get_dataset_specs_class_inc(**kwargs):
 
         eval_ratio = kwargs['eval_ratio'] if 'eval_ratio' in kwargs else None   
         total_class_num = np.unique(order).shape[0] 
-        ds_dict, task_order = generate_modulation_ds_class_inc(task_num=kwargs['task_num'],
+        ds_dict, task_order = generate_modulation_ds_class_inc(task_num=kwargs['task_num'], snrs=kwargs['snrs'],
                                                                seed=kwargs['seed'], order=order, 
                                                                rnd_order=False, eval_ratio=eval_ratio )
         im_sz=None
