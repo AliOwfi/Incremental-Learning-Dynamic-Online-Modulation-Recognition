@@ -3,7 +3,7 @@ import torch
 
 
 class CNN1DClassifier(nn.Module):
-    def __init__(self, n_way, include_head=True, last_relu=True):
+    def __init__(self, n_way, include_head=True, last_relu=True, bias=True):
         super().__init__()
         self.loss = nn.CrossEntropyLoss()
         self.include_head = include_head
