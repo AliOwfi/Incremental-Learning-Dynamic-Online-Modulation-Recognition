@@ -1,4 +1,7 @@
 # [Dynamic online modulation recognition using incremental learning](https://ieeexplore.ieee.org/abstract/document/10556007)
+<div align="center">
+  <img src="https://github.com/user-attachments/assets/1b3af431-89d8-4ae0-b6a1-3105f8833ce3" alt="Image" />
+</div>
 
 This repository contains the code for the paper **"Dynamic online modulation recognition using incremental learning"**, which was presented at 2024 International Conference on Computing, Networking and Communications (ICNC). The code provides the implementation of the utilized incremental learning algorithms for the proposed dynamic DL-based modulation recognition framework.
 
